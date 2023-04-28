@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Chatbot</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="manifest" href="mentalhealth.webmanifest">
+    <link rel="stylesheet" type="text/css" href="public/style.css">
+    <script src="https://kit.fontawesome.com/ad79393abb.js" crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <div class="chatbot-container">
+        <div class="chatbot-header">
+            <div class="sentiment-animals">
+                <div id="cat-container" class="animal-container">
+                    <i class="fa-solid fa-cat"></i>
+                </div>
+                <div id="dog-container" class="animal-container">
+                    <i class="fa-solid fa-dog"></i>
+                </div>
+                <div id="horse-container" class="animal-container">
+                    <i class="fa-solid fa-horse-head"></i>
+                </div>
+            </div>
+            <span class="chatbot-title">Chatbot</span>
+            <div class="chatbot-close">
+                <i class="fa-solid fa-eye-slash"></i>
+            </div>
+        </div>
+        <div class="chatbot-body">
+            <div class="chatbot-date">
+                <p id="chatbot-date-text" class="chatbot-date-text"></p>
+            </div>
+            <div>
+                <div class="chatbot-input-container">
+                    <input type="text" placeholder="Reply or ask a question" id="chatbot-input">
+                    <button type="submit" id="chatbot-submit"><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+            <div class="chatbot-box">
+                <div class="chatbot-message">
+                    <div id="animals">
+                        <p class="animals-header">Hi, to start please choose your favorite animal: </p>
+                        <div class="row-animals">
+                            <button id="cat-button">Cat</button>
+                            <button id="dog-button">Dog</button>
+                            <button id="horse-button">Horse</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.9.0/dist/tf.min.js"></script>
+
+    <script>
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(function (registration) {
+                        console.log('Service Worker registered with scope: ', registration.scope);
+                    }, function (err) {
+                        console.log('Service Worker registration failed: ', err);
+                    });
+            });
+        }</script>
+
+    <script>
+        // function to update the date and time every second
+        function updateDate() {
+            const now = new Date();
+            const day = now.toLocaleDateString('en-US', { weekday: 'long' });
+            const month = now.toLocaleDateString('en-US', { month: 'long' });
+            const date = now.toLocaleDateString('en-US', { day: 'numeric' });
+            const year = now.toLocaleDateString('en-US', { year: 'numeric' });
+            const time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
+            const formattedDate = `${day}, ${month} ${date}, ${year} ${time}`;
+            document.getElementById('chatbot-date-text').textContent = formattedDate;
+        }
+
+        // set an interval to update the date every second
+        setInterval(updateDate, 1000);
+
+        // get all necessary elements from the HTML
+        const animalContainer = document.querySelector('.sentiment-animals');
+        const catButton = document.querySelector('#cat-button');
+        const dogButton = document.querySelector('#dog-button');
+        const horseButton = document.querySelector('#horse-button');
+        const catContainer = document.querySelector('#cat-container');
+        const dogContainer = document.querySelector('#dog-container');
+        const horseContainer = document.querySelector('#horse-container');
+        const animals = document.querySelector('#animals');
+
+        // add event listeners to the animal buttons
+        catButton.addEventListener('click', () => {
+            catContainer.style.display = 'block';
+            animals.style.display = 'none';
+            submitButton.disabled = false;
+        });
+
+        dogButton.addEventListener('click', () => {
+            dogContainer.style.display = 'block';
+            animals.style.display = 'none';
+            submitButton.disabled = false;
+        });
+
+        horseButton.addEventListener('click', () => {
+            horseContainer.style.display = 'block';
+            animals.style.display = 'none';
+            submitButton.disabled = false;
+        });
+
+        // get elements for the chatbot and messages
+        const chatbotContainer = document.querySelector('.chatbot-container');
+        const chatbotClose = document.querySelector('.chatbot-close');
+        const messagesContainer = document.querySelector('.chatbot-message');
+        const input = document.querySelector('#chatbot-input');
+        const submitButton = document.querySelector('#chatbot-submit');
+
+        // disable submit button by default
+        submitButton.disabled = true;
+
+        // add event listener to the close button for the chatbot
+        chatbotClose.addEventListener('click', () => {
+            chatbotContainer.classList.toggle('closed');
+        });
+
+        // add event listener to the submit button for the chatbot
+        submitButton.addEventListener('click', handleSubmit);
+        input.addEventListener('keyup', function (event) {
+            if (event.key === 'Enter') {
+                handleSubmit(event);
+            }
+        });
+
+        function handleSubmit(event) {
+            event.preventDefault(); // prevent form submission
+            const inputValue = input.value; // get the user input
+            fetch('/predict', { // send the user input to the server to get a sentiment prediction
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({ input: inputValue }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => response.json()) // parse the response as JSON
+                .then(data => {
+                    const output = data.output; // get the output message from the server
+                    const sentiment = data.sentiment; // get the sentiment from the server
+
+                    const userMessageElement = document.createElement('div');
+                    userMessageElement.id = 'userMessage'; // set the ID of the user message element
+                    userMessageElement.innerHTML = inputValue;
+
+                    const userImageElement = document.createElement('div');
+                    userImageElement.id = 'userImage'; // set the ID of the user image element
+
+                    const iconElement = document.createElement('i'); // create an <i> element
+                    iconElement.classList.add('fas', 'fa-user'); // add classes to the <i> element
+
+                    userImageElement.appendChild(iconElement); // add the <i> element as a child of the user image element
+                    userMessageElement.appendChild(userImageElement); // add the user image element as a child of the user message element
+                    messagesContainer.appendChild(userMessageElement); // add the user message element to the message container
+
+                    const messageElement = document.createElement('div'); // create a new message element
+                    messageElement.id = 'myMessage'; // set the ID of the message element
+                    const messageImageElement = document.createElement('div');
+                    messageImageElement.id = 'messageImage'; // set the ID of the message image element
+                    const iconMessageElement = document.createElement('i'); // create an <i> element
+                    iconMessageElement.classList.add('fa-solid', 'fa-robot'); // add classes to the <i> element
+
+                    messageImageElement.appendChild(iconMessageElement); // add the <i> element as a child of the message image element
+                    messageElement.appendChild(messageImageElement); // add the message image element as a child of the message element
+                    messagesContainer.appendChild(messageElement); // add the message element to the message container
+
+                    let i = 0; // set a counter for the message output animation
+                    const intervalId = setInterval(() => {
+                        messageElement.innerHTML += output.charAt(i);
+                        i++;
+                        if (i > output.length - 1) {
+                            clearInterval(intervalId);
+                        }
+                    }, 50);
+
+                    // add classes to the animal container based on sentiment
+                    if (sentiment === 'positive') {
+                        animalContainer.classList.add('positive');
+                    } else if (sentiment === 'negative') {
+                        animalContainer.classList.add('negative');
+                    } else {
+                        animalContainer.classList.add('neutral');
+                    }
+
+                    // remove the sentiment class from the animal container after 2 seconds
+                    setTimeout(() => {
+                        animalContainer.classList.remove(sentiment);
+                    }, 2000);
+                })
+            input.value = '';
+        }
+
+    </script>
+
+</body>
+
+</html>
